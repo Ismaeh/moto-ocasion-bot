@@ -7,6 +7,10 @@ import json
 from dotenv import load_dotenv
 from urllib.parse import urljoin
 from io import BytesIO
+from flask import Flask
+import threading
+
+app = Flask(__name__)
 
 load_dotenv()
 
@@ -93,7 +97,7 @@ def obtener_anuncios():
     return anuncios
 
 
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=5)
 async def comprobar():
     global vistos
 
@@ -141,12 +145,6 @@ async def comprobar():
             await canal.send(embed=embed, file=file)
 
 
-@bot.event
-async def on_ready():
-    print(f"Bot listo: {bot.user}")
-    comprobar.start()
-
-
 @bot.command()
 async def start(ctx):
     global activo
@@ -167,3 +165,18 @@ async def status(ctx):
 
 
 bot.run(TOKEN)
+
+
+@app.route("/")
+def home():
+    return "Bot activo"
+
+def run_web():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    
+    
+@bot.event
+async def on_ready():
+    print(f"Bot listo: {bot.user}")
+    threading.Thread(target=run_web).start()  # 👈 IMPORTANTE
+    comprobar.start()
